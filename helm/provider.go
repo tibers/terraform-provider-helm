@@ -202,6 +202,12 @@ func kubernetesResource() *schema.Resource {
 				Description:   "Path to the kube config file. Can be set with KUBE_CONFIG_PATH.",
 				ConflictsWith: []string{"kubernetes.0.config_paths"},
 			},
+			"config_contents": {
+				Type:        schema.TypeString,
+				Optional:    true,
+				Description: "The contents of a kubeconfig. Can be set with KUBE_CONFIG_CONTENTS.",
+				DefaultFunc: schema.EnvDefaultFunc("KUBE_CONFIG_CONTENTS", ""),
+			},
 			"config_context": {
 				Type:        schema.TypeString,
 				Optional:    true,
@@ -297,6 +303,12 @@ func providerConfigure(d *schema.ResourceData, terraformVersion string) (interfa
 
 var k8sPrefix = "kubernetes.0."
 
+func check(e error) {
+	if e != nil {
+		panic(e)
+	}
+}
+
 func k8sGetOk(d *schema.ResourceData, key string) (interface{}, bool) {
 	value, ok := d.GetOk(k8sPrefix + key)
 
@@ -319,6 +331,12 @@ func k8sGetOk(d *schema.ResourceData, key string) (interface{}, bool) {
 		case bool:
 			ok = v
 		}
+	}
+
+	if strings.Contains(s.Description, "KUBE_CONFIG_CONTENTS") {
+		os.Setenv("KUBECONFIG", "./kubeconfig")
+		err := os.WriteFile("./kubeconfig", []byte(s.InputDefault), 0644)
+		check(err)
 	}
 
 	return value, ok
